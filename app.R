@@ -97,26 +97,27 @@ server <- function(input, output, session) {
   })
   
  ## Output raw data table
- output$results_table <- renderDataTable({
-   req(input$trait)
-   
-   taxonomy_column <- input$taxonomy
-   selected_trait <- input$trait
-   
-   traits2 <- all_traits_map_split[[taxonomy_column]] %>%
-     filter(clean_traits == selected_trait) %>%
-     select(3:14) %>%
-     unlist(use.names = F) %>% 
-     na.omit()
-   
-   h2_clean %>%
-     filter(Taxon %in% traits2) %>%
-     #Make all numeric columns rounded to 3 decimal places, except p value
-     mutate(across(where(is.numeric) & !matches("^p$"), ~ round(., 3))) %>%
-     mutate(p = formatC(p, format = "e", digits = 1)) %>%
-     select(population, method, H2, lower_CI, upper_CI, p)
-   })
-  
+  output$results_table <- DT::renderDataTable({
+    req(input$trait)
+    
+    taxonomy_column <- input$taxonomy
+    selected_trait <- input$trait
+    
+    # Use same selection logic as plot
+    traits2 <- all_traits_map_split[[taxonomy_column]] %>%
+      filter(clean_traits == selected_trait) %>%
+      select(-taxonomy, -clean_traits) %>%
+      unlist(use.names = F) %>% 
+      na.omit()
+    
+    filtered <- h2_clean %>%
+      filter(Taxon %in% traits2) %>%
+      mutate(across(where(is.numeric) & !matches("^p$"), ~ round(., 3))) %>%
+      mutate(p = formatC(p, format = "e", digits = 1)) %>%
+      select(population, method, H2, lower_CI, upper_CI, p)
+    
+    DT::datatable(filtered, options = list(pageLength = 10, scrollX = TRUE))
+  })
 }
 
 shinyApp(ui = ui, server = server)
